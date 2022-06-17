@@ -19,4 +19,10 @@ WORKDIR /app
 
 COPY --from=builder /app/event_display event_display
 
+RUN apk update && apk add curl
+
+ENV PORT=3000
+
+EXPOSE ${PORT}
+
 ENTRYPOINT [ "./event_display" ]

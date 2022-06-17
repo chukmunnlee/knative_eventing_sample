@@ -18,10 +18,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/cloudevents/sdk-go/observability/opencensus/v2/client"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -65,8 +67,14 @@ func main() {
 }
 
 func run(ctx context.Context) {
+
+	port := getPort()
+
 	c, err := client.NewClientHTTP(
-		[]cehttp.Option{cehttp.WithMiddleware(healthzMiddleware)}, nil,
+		[]cehttp.Option{
+			cehttp.WithMiddleware(healthzMiddleware),
+			cehttp.WithPort(port),
+		}, nil,
 	)
 	if err != nil {
 		log.Fatal("Failed to create client: ", err)
@@ -79,6 +87,7 @@ func run(ctx context.Context) {
 		log.Fatalf("Failed to initialize tracing: %v", err)
 	}
 
+	log.Printf("Listening on port %d", port)
 	if err := c.StartReceiver(ctx, display); err != nil {
 		log.Fatal("Error during receiver's runtime: ", err)
 	}
@@ -96,4 +105,18 @@ func healthzMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, req)
 		}
 	})
+}
+
+func getPort() int {
+	var err error
+	port := 3000
+	p, exist := os.LookupEnv("PORT")
+	if exist {
+		if port, err = strconv.Atoi(p); nil != err {
+			log.Fatalf("Error during receiver's runtime: %v", err)
+		}
+	}
+	flag.IntVar(&port, "port", port, "port")
+	flag.Parse()
+	return port
 }
